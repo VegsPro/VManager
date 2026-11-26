@@ -20,7 +20,7 @@ import com.vmanager.app.ui.FileManagerViewModel
 import com.vmanager.app.ui.PaneSide
 import com.vmanager.app.ui.components.*
 import com.vmanager.app.ui.theme.*
-import dev.chrisbanes.haze.hazeSource
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,7 +29,7 @@ fun MainScreen(
     viewModel: FileManagerViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    val hazeState = LocalHazeState.current
+    
 
     var showNewFolderDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf<FileItem?>(null) }
@@ -44,7 +44,7 @@ fun MainScreen(
                     listOf(BackgroundDark, BackgroundDark.copy(alpha = 0.95f), BackgroundDark)
                 )
             )
-            .hazeSource(state = hazeState)
+            
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Top App Bar
@@ -147,6 +147,8 @@ fun MainScreen(
                             viewModel.toggleSelection(PaneSide.LEFT, item.path)
                         } else if (item.isDirectory) {
                             viewModel.navigateTo(PaneSide.LEFT, item.path)
+                        } else if (item.extension == "zip") {
+                            viewModel.openZipAsFolder(PaneSide.LEFT, item.path)
                         }
                     },
                     onItemLongClick = { viewModel.toggleSelection(PaneSide.LEFT, it.path) },
@@ -212,6 +214,8 @@ fun MainScreen(
                                 viewModel.toggleSelection(PaneSide.RIGHT, item.path)
                             } else if (item.isDirectory) {
                                 viewModel.navigateTo(PaneSide.RIGHT, item.path)
+                            } else if (item.extension == "zip") {
+                                viewModel.openZipAsFolder(PaneSide.RIGHT, item.path)
                             }
                         },
                         onItemLongClick = { viewModel.toggleSelection(PaneSide.RIGHT, it.path) },

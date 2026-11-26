@@ -27,6 +27,8 @@ data class FileItem(
     val formattedDate: String
         get() = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(lastModified))
 
+    fun nameWithoutExt(): String = if (extension.isNotEmpty()) name.removeSuffix(".$extension") else name
+
     val iconType: FileIconType
         get() = when {
             isDirectory -> FileIconType.FOLDER

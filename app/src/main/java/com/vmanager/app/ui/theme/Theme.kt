@@ -1,7 +1,6 @@
 package com.vmanager.app.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -12,9 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import dev.chrisbanes.haze.HazeState
 
-val LocalHazeState = staticCompositionLocalOf { HazeState() }
 val LocalGlassEnabled = staticCompositionLocalOf { true }
 
 private val DarkColorScheme = darkColorScheme(
@@ -33,13 +30,12 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun VManagerTheme(
-    darkTheme: Boolean = true, // always prefer dark for glass
+    darkTheme: Boolean = true,
     glassEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = DarkColorScheme
     val view = LocalView.current
-    val hazeState = androidx.compose.runtime.remember { HazeState() }
 
     if (!view.isInEditMode) {
         SideEffect {
@@ -52,7 +48,6 @@ fun VManagerTheme(
     }
 
     CompositionLocalProvider(
-        LocalHazeState provides hazeState,
         LocalGlassEnabled provides glassEnabled
     ) {
         MaterialTheme(

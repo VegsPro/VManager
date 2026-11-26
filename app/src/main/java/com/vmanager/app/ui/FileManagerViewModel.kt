@@ -335,4 +335,31 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
     fun toggleSettings() {
         _uiState.update { it.copy(showSettings = !it.showSettings) }
     }
+
+    fun openZipAsFolder(side: PaneSide, zipPath: String) {
+        navigateTo(side, "zip://$zipPath")
+    }
+
+    fun batchRenameSelected(side: PaneSide, pattern: String, replacement: String, useRegex: Boolean) {
+        viewModelScope.launch {
+            val pane = if (side == PaneSide.LEFT) _uiState.value.leftPane else _uiState.value.rightPane
+            val sources = pane.files.filter { it.path in pane.selected }.map { it.file }
+            if (sources.isEmpty()) return@launch
+            repo.batchRename(sources, pattern, replacement, useRegex)
+            refreshPane(side)
+        }
+    }
+
+    fun extractSelectedZip(side: PaneSide) {
+        viewModelScope.launch {
+            val pane = if (side == PaneSide.LEFT) _uiState.value.leftPane else _uiState.value.rightPane
+            val zips = pane.files.filter { it.path in pane.selected && it.extension == "zip" }
+            zips.forEach { item ->
+                val dest = File(pane.currentPath, item.nameWithoutExt())
+                repo.extractZip(item.file, dest)
+            }
+            refreshPane(side)
+        }
+    }
+
 }

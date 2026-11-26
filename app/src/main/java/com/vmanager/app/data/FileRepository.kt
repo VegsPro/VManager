@@ -7,8 +7,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.util.UUID
 import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
@@ -19,7 +19,6 @@ class FileRepository(private val context: Context) {
         roots.add(Environment.getExternalStorageDirectory())
         roots.add(context.filesDir)
         roots.add(context.cacheDir)
-        // Secondary storage if available
         context.getExternalFilesDirs(null).forEach { dir ->
             dir?.parentFile?.parentFile?.let { if (it.exists() && !roots.contains(it)) roots.add(it) }
         }
@@ -32,6 +31,11 @@ class FileRepository(private val context: Context) {
         sortBy: SortBy = SortBy.NAME,
         ascending: Boolean = true
     ): List<FileItem> = withContext(Dispatchers.IO) {
+        if (path.startsWith("zip://")) {
+            val parts = path.removePrefix("zip://").split("!", limit = 2)
+            val zipPath = parts[0]
+            return@withContext listZipEntries(File(zipPath))
+        }
         val dir = File(path)
         if (!dir.exists() || !dir.isDirectory || !dir.canRead()) return@withContext emptyList()
 
@@ -44,10 +48,39 @@ class FileRepository(private val context: Context) {
             SortBy.DATE -> filtered.sortedBy { it.lastModified }
             SortBy.TYPE -> filtered.sortedBy { it.extension }
         }
-
         val result = if (ascending) sorted else sorted.reversed()
-        // Directories first
         result.sortedBy { !it.isDirectory }
+    }
+
+    suspend fun listZipEntries(zipFile: File): List<FileItem> = withContext(Dispatchers.IO) {
+        try {
+            val entries = mutableListOf<FileItem>()
+            ZipFile(zipFile).use { zf ->
+                val topLevel = mutableSetOf<String>()
+                zf.entries().asSequence().forEach { entry ->
+                    val name = entry.name.trimEnd('/')
+                    val first = name.substringBefore("/")
+                    if (first.isNotEmpty()) topLevel.add(first)
+                }
+                topLevel.forEach { name ->
+                    val isDir = zf.getEntry("$name/") != null || zf.entries().asSequence().any { it.name.startsWith("$name/") }
+                    val size = zf.getEntry(name)?.size ?: 0L
+                    entries.add(
+                        FileItem(
+                            file = File(zipFile.parentFile, name),
+                            name = name,
+                            path = "zip://${zipFile.absolutePath}!$name",
+                            isDirectory = isDir,
+                            size = size,
+                            lastModified = zipFile.lastModified()
+                        )
+                    )
+                }
+            }
+            entries.sortedBy { !it.isDirectory }.sortedBy { it.name.lowercase() }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     suspend fun copyFiles(
@@ -56,14 +89,10 @@ class FileRepository(private val context: Context) {
         onProgress: (Float) -> Unit = {}
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val total = sources.size.toFloat()
+            val total = sources.size.toFloat().coerceAtLeast(1f)
             sources.forEachIndexed { index, src ->
                 val dest = File(destDir, src.name)
-                if (src.isDirectory) {
-                    copyDirectory(src, dest)
-                } else {
-                    src.copyTo(dest, overwrite = true)
-                }
+                if (src.isDirectory) copyDirectory(src, dest) else src.copyTo(dest, overwrite = true)
                 onProgress((index + 1) / total)
             }
             Result.success(Unit)
@@ -76,8 +105,7 @@ class FileRepository(private val context: Context) {
         if (!dest.exists()) dest.mkdirs()
         src.listFiles()?.forEach { child ->
             val target = File(dest, child.name)
-            if (child.isDirectory) copyDirectory(child, target)
-            else child.copyTo(target, overwrite = true)
+            if (child.isDirectory) copyDirectory(child, target) else child.copyTo(target, overwrite = true)
         }
     }
 
@@ -87,11 +115,10 @@ class FileRepository(private val context: Context) {
         onProgress: (Float) -> Unit = {}
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val total = sources.size.toFloat()
+            val total = sources.size.toFloat().coerceAtLeast(1f)
             sources.forEachIndexed { index, src ->
                 val dest = File(destDir, src.name)
                 if (!src.renameTo(dest)) {
-                    // Fallback to copy + delete
                     if (src.isDirectory) copyDirectory(src, dest) else src.copyTo(dest, overwrite = true)
                     src.deleteRecursively()
                 }
@@ -108,7 +135,7 @@ class FileRepository(private val context: Context) {
         onProgress: (Float) -> Unit = {}
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val total = files.size.toFloat()
+            val total = files.size.toFloat().coerceAtLeast(1f)
             files.forEachIndexed { index, file ->
                 file.deleteRecursively()
                 onProgress((index + 1) / total)
@@ -122,8 +149,43 @@ class FileRepository(private val context: Context) {
     suspend fun renameFile(file: File, newName: String): Result<File> = withContext(Dispatchers.IO) {
         try {
             val dest = File(file.parent, newName)
-            if (file.renameTo(dest)) Result.success(dest)
-            else Result.failure(Exception("Rename failed"))
+            if (file.renameTo(dest)) Result.success(dest) else Result.failure(Exception("Rename failed"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun batchRename(
+        files: List<File>,
+        pattern: String,
+        replacement: String,
+        useRegex: Boolean
+    ): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            var count = 0
+            files.forEachIndexed { index, file ->
+                val newName = if (useRegex) {
+                    try {
+                        Regex(pattern).replace(file.name, replacement)
+                    } catch (e: Exception) {
+                        file.name
+                    }
+                } else {
+                    var result = replacement
+                    val base = file.nameWithoutExtension
+                    val ext = file.extension
+                    result = result.replace("*", base).replace("{name}", base)
+                    result = result.replace("{ext}", ext)
+                    result = result.replace("#", (index + 1).toString())
+                    if (ext.isNotEmpty() && !result.endsWith(".$ext")) result += ".$ext"
+                    result
+                }
+                if (newName != file.name && newName.isNotBlank()) {
+                    val dest = File(file.parent, newName)
+                    if (!dest.exists() && file.renameTo(dest)) count++
+                }
+            }
+            Result.success(count)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -132,8 +194,7 @@ class FileRepository(private val context: Context) {
     suspend fun createFolder(parent: File, name: String): Result<File> = withContext(Dispatchers.IO) {
         try {
             val folder = File(parent, name)
-            if (folder.mkdirs()) Result.success(folder)
-            else Result.failure(Exception("Cannot create folder"))
+            if (folder.mkdirs()) Result.success(folder) else Result.failure(Exception("Cannot create folder"))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -165,9 +226,7 @@ class FileRepository(private val context: Context) {
                 zos.putNextEntry(ZipEntry("$entryName/"))
                 zos.closeEntry()
             } else {
-                children.forEach { child ->
-                    addToZip(child, "$entryName/${child.name}", zos)
-                }
+                children.forEach { child -> addToZip(child, "$entryName/${child.name}", zos) }
             }
         } else {
             zos.putNextEntry(ZipEntry(entryName))
@@ -188,16 +247,15 @@ class FileRepository(private val context: Context) {
                 var count = 0
                 while (entry != null) {
                     val outFile = File(destDir, entry.name)
-                    if (entry.isDirectory) {
-                        outFile.mkdirs()
-                    } else {
+                    if (entry.isDirectory) outFile.mkdirs()
+                    else {
                         outFile.parentFile?.mkdirs()
                         FileOutputStream(outFile).use { zis.copyTo(it) }
                     }
                     zis.closeEntry()
                     entry = zis.nextEntry
                     count++
-                    onProgress((count % 100) / 100f) // approximate
+                    onProgress((count % 50) / 50f)
                 }
             }
             Result.success(Unit)
