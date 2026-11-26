@@ -1,5 +1,8 @@
 package com.vmanager.app.ui.screens
 
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,6 +27,7 @@ import com.vmanager.app.ui.theme.*
 
 
 @OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     viewModel: FileManagerViewModel = viewModel()
@@ -374,7 +378,7 @@ private fun OperationsQueueSheet(
     onClearCompleted: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text("Operations Queue", style = MaterialTheme.typography.titleLarge, color = AccentCyan)
             Spacer(Modifier.height(12.dp))
             if (operations.isEmpty()) {
@@ -417,7 +421,7 @@ private fun BookmarksSheet(
     onAddCurrent: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -451,7 +455,7 @@ private fun SettingsSheet(
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text("Settings", style = MaterialTheme.typography.titleLarge, color = AccentCyan)
             Spacer(Modifier.height(16.dp))
             Row(
