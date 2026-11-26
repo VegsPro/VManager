@@ -1,6 +1,7 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.vmanager.app.ui.screens
 
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 
 import androidx.compose.foundation.background
@@ -27,7 +28,6 @@ import com.vmanager.app.ui.theme.*
 
 
 @OptIn(ExperimentalMaterial3Api::class)
-@file:OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     viewModel: FileManagerViewModel = viewModel()
