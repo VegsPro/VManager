@@ -345,29 +345,31 @@ private fun PaneContent(
     GlassSurface(
         modifier = modifier
             .fillMaxHeight()
-            .padding(4.dp)
-    ) {
-        Column(Modifier = Modifier.fillMaxSize()) {
-            PaneToolbar(
-                currentPath = pane.currentPath,
-                selectedCount = pane.selected.size,
-                onNavigateUp = onNavigateUp,
-                onRefresh = onRefresh,
-                onSelectAll = onSelectAll,
-                onClearSelection = onClearSelection,
-                onNewFolder = onNewFolder
-            )
-            HorizontalDivider(color = BorderGlass.copy(alpha = 0.3f))
-            FileList(
-                files = pane.files,
-                selected = pane.selected,
-                isLoading = pane.isLoading,
-                onItemClick = onItemClick,
-                onItemLongClick = onItemLongClick,
-                modifier = Modifier.weight(1f)
-            )
+            .padding(4.dp),
+        content = {
+            Column(modifier = Modifier.fillMaxSize()) {
+                PaneToolbar(
+                    currentPath = pane.currentPath,
+                    selectedCount = pane.selected.size,
+                    onNavigateUp = onNavigateUp,
+                    onRefresh = onRefresh,
+                    onSelectAll = onSelectAll,
+                    onClearSelection = onClearSelection,
+                    onNewFolder = onNewFolder
+                )
+                HorizontalDivider(color = BorderGlass.copy(alpha = 0.3f))
+                FileList(
+                    files = pane.files,
+                    selected = pane.selected,
+                    isLoading = pane.isLoading,
+                    onItemClick = onItemClick,
+                    onItemLongClick = onItemLongClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
-    }
+    )
+
 }
 
 @Composable
