@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VManager</string>
+    <string name="dual_pane">Dual Pane</string>
+    <string name="tabs">Tabs</string>
+    <string name="bookmarks">Bookmarks</string>
+    <string name="settings">Settings</string>
+    <string name="storage_analysis">Storage Analysis</string>
+    <string name="copy">Copy</string>
+    <string name="move">Move</string>
+    <string name="delete">Delete</string>
+    <string name="rename">Rename</string>
+    <string name="new_folder">New Folder</string>
+    <string name="select_all">Select All</string>
+    <string name="deselect">Deselect</string>
+    <string name="operations_queue">Operations Queue</string>
+    <string name="glass_effect">Glass Effect</string>
+    <string name="dark_theme">Dark Theme</string>
+    <string name="about">About</string>
+</resources>
